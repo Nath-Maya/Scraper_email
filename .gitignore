@@ -1,0 +1,15 @@
+# Entornos
+.env
+*.env
+__pycache__/
+
+# Archivos de salida
+*.xlsx
+
+# Driver
+chromedriver
+chromedriver.exe
+.chromedriver/
+
+# macOS
+.DS_Store
