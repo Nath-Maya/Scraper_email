@@ -1,6 +1,6 @@
+from config import Settings
 from email_scraper import scrap_rackspace_emails
 from excel_writer import save_emails_to_excel
-from config import Settings
 
 def main():
     settings = Settings.load()

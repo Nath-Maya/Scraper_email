@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-load_dotenv()  # Cargar variables desde .env
+load_dotenv()
 
 @dataclass
 class Settings:
@@ -28,7 +28,7 @@ class Settings:
         headless = os.getenv("CHROME_HEADLESS", "false").lower() in ("1", "true", "yes")
         wait_short = int(os.getenv("WAIT_SHORT", "10"))
         wait_long = int(os.getenv("WAIT_LONG", "40"))
-        out_xlsx = os.getenv("OUTPUT_XLSX", "emails.xlsx")
+        out_xlsx = os.getenv("OUTPUT_XLSX", "data/emails.xlsx")
         return cls(
             RACKSPACE_URL=url,
             RACKSPACE_USERNAME=user,

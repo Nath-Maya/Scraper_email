@@ -1,14 +1,15 @@
 import pandas as pd
 import os
 
-def save_emails_to_excel(emails, file_path="emails.xlsx"):
+def save_emails_to_excel(emails, file_path="data/emails.xlsx"):
+    print("DEBUG antes de crear directorio y guardar excel")
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     if not emails:
-        return
-    df_new = pd.DataFrame(emails)
-    if os.path.exists(file_path):
-        df_old = pd.read_excel(file_path)
-        df = pd.concat([df_old, df_new], ignore_index=True)
+        print("DEBUG: emails vacío, solo headers.")
+        df = pd.DataFrame(columns=["Subject", "Received"])
     else:
-        df = df_new
+        print(f"DEBUG: emails a guardar: {emails}")
+        df = pd.DataFrame(emails)
+    print("DEBUG: Guardando el archivo Excel…")
     df.to_excel(file_path, index=False)
     print(f"📄 Datos guardados en {file_path}")

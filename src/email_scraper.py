@@ -47,13 +47,21 @@ def scrap_rackspace_emails(settings: Settings):
         subjects = driver.find_elements(By.CSS_SELECTOR, 'div[_ref="subject"]')
         receiveds = driver.find_elements(By.CSS_SELECTOR, 'div[_ref="received"]')
 
-        # Solo tomamos los pares completos (en el mismo orden visual)
+      # Solo tomamos los pares completos (en el mismo orden visual)
         count = min(len(subjects), len(receiveds))
         mails = []
         for i in range(count):
             subj = subjects[i].text.strip()
             recv = receiveds[i].text.strip()
+            # Evita filas de encabezado HTML
+            if subj.lower() == "subject" and recv.lower() == "received":
+                continue
             mails.append({"Subject": subj, "Received": recv})
+            print(f"{i+1}. Subject: {subj} | Received: {recv}")
+
+
+        if not mails:
+            print("ℹ️ No se extrajo ningún correo. ¿ORDERS está vacía? ¿Cambió el selector?")
 
         print(f"✅ Se extrajeron {len(mails)} mensajes.")
         return mails
@@ -70,7 +78,7 @@ def click_folder(driver, container, target_name: str, settings: Settings) -> boo
             if target in txt:
                 try:
                     link = f.find_element(By.CSS_SELECTOR, "a.link")
-                except:
+                except Exception:
                     link = f
                 driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
                 time.sleep(0.2)
