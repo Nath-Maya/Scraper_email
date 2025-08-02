@@ -5,10 +5,8 @@ from config import Settings
 def main():
     settings = Settings.load()
     settings.safe_print()
-
     print("🚀 Iniciando scraper Rackspace → Excel …")
     data = scrap_rackspace_emails(settings)
-
     if data:
         save_emails_to_excel(data, settings.OUTPUT_XLSX)
         print(f"✅ {len(data)} correos procesados.")
