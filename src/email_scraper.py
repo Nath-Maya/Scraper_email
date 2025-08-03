@@ -6,7 +6,6 @@ import time
 from config import Settings
 
 def scrap_rackspace_emails(settings: Settings):
-    """Inicia sesión, abre ORDERS y extrae Subject/Received de todos los correos en la lista."""
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     if settings.CHROME_HEADLESS:
@@ -15,8 +14,11 @@ def scrap_rackspace_emails(settings: Settings):
     driver = webdriver.Chrome(options=options)
 
     try:
-        # 1) Abrir URL y Login
+        print("🚀 Iniciando scraper para Rackspace Webmail...")
         driver.get(settings.RACKSPACE_URL)
+
+        # LOGIN usando campos por NAME
+        print("🔐 Esperando campos de login…")
         WebDriverWait(driver, settings.WAIT_LONG).until(
             EC.presence_of_element_located((By.NAME, "username"))
         )
@@ -27,63 +29,51 @@ def scrap_rackspace_emails(settings: Settings):
         ).click()
         print("✅ Login enviado.")
 
-        # 2) Panel carpetas
+        # ESPERAR PANEL CARPETAS Y ENCONTRAR 'ORDERS'
         print("⏳ Esperando panel de carpetas…")
-        folders_container = WebDriverWait(driver, settings.WAIT_LONG).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.folders"))
+        WebDriverWait(driver, settings.WAIT_LONG).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "folders"))
         )
+        time.sleep(2)
+        folders_div = driver.find_element(By.CLASS_NAME, "folders")
+        carpetas = folders_div.find_elements(By.XPATH, ".//div | .//span")
+        orders_elem = None
+        for c in carpetas:
+            if "orders" in c.text.strip().lower():
+                orders_elem = c
+                break
 
-        # 3) Abrir ORDERS
-        if not click_folder(driver, folders_container, "ORDERS", settings):
-            raise Exception("No se encontró / no se pudo clickear la carpeta ORDERS.")
+        if orders_elem is None:
+            raise Exception("No se encontró la carpeta ORDERS. Verifica el texto exacto en el panel de carpetas.")
+
+        driver.execute_script("arguments[0].scrollIntoView(true);", orders_elem)
+        orders_elem.click()
         print("✅ Carpeta 'ORDERS' abierta.")
 
-        # 4) Esperar carga de correos
-        print("⏳ Esperando carga de correos…")
-        time.sleep(7)
+        # ESPERAR TABLA DE CORREOS
+        print("⏳ Esperando que cargue la tabla de correos...")
+        WebDriverWait(driver, settings.WAIT_LONG).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.Widgets_Email_Grid_Row'))
+        )
+        time.sleep(2)
 
-        # 5) EXTRAER TODOS SUBJECT Y RECEIVED
-        print("🔍 Extrayendo Subject y Received de TODOS los mensajes en la lista…")
-        subjects = driver.find_elements(By.CSS_SELECTOR, 'div[_ref="subject"]')
-        receiveds = driver.find_elements(By.CSS_SELECTOR, 'div[_ref="received"]')
-
-      # Solo tomamos los pares completos (en el mismo orden visual)
-        count = min(len(subjects), len(receiveds))
+        # Iterar sobre las filas de correos
+        rows = driver.find_elements(By.CSS_SELECTOR, 'tr.Widgets_Email_Grid_Row')
+        print(f"📨 Correos encontrados: {len(rows)}")
         mails = []
-        for i in range(count):
-            subj = subjects[i].text.strip()
-            recv = receiveds[i].text.strip()
-            # Evita filas de encabezado HTML
-            if subj.lower() == "subject" and recv.lower() == "received":
-                continue
-            mails.append({"Subject": subj, "Received": recv})
-            print(f"{i+1}. Subject: {subj} | Received: {recv}")
-
-
-        if not mails:
-            print("ℹ️ No se extrajo ningún correo. ¿ORDERS está vacía? ¿Cambió el selector?")
+        for i, row in enumerate(rows):
+            try:
+                subj = row.find_element(By.CSS_SELECTOR, 'div[_ref="subject"]').text.strip()
+                recv = row.find_element(By.CSS_SELECTOR, 'div[_ref="received"]').text.strip()
+                if subj.lower() == "subject" and recv.lower() == "received":
+                    continue
+                mails.append({"Subject": subj, "Received": recv})
+                print(f"{i+1}. Subject: {subj} | Received: {recv}")
+            except Exception as e:
+                print(f"❌ Error en fila {i}: {e}")
 
         print(f"✅ Se extrajeron {len(mails)} mensajes.")
         return mails
 
     finally:
         driver.quit()
-
-def click_folder(driver, container, target_name: str, settings: Settings) -> bool:
-    target = target_name.upper()
-    for _ in range(12):
-        folders = container.find_elements(By.CSS_SELECTOR, "div.folder")
-        for f in folders:
-            txt = f.text.strip().upper()
-            if target in txt:
-                try:
-                    link = f.find_element(By.CSS_SELECTOR, "a.link")
-                except Exception:
-                    link = f
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
-                time.sleep(0.2)
-                driver.execute_script("arguments[0].click();", link)
-                return True
-        driver.execute_script("arguments[0].scrollTop = arguments[0].scrollTop + 300;", container)
-        time.sleep(0.3)
-    return False
