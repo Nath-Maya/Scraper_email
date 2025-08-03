@@ -29,51 +29,56 @@ def scrap_rackspace_emails(settings: Settings):
         ).click()
         print("✅ Login enviado.")
 
-        # ESPERAR PANEL CARPETAS Y ENCONTRAR 'ORDERS'
+        # Espera panel de carpetas
         print("⏳ Esperando panel de carpetas…")
         WebDriverWait(driver, settings.WAIT_LONG).until(
             EC.presence_of_element_located((By.CLASS_NAME, "folders"))
         )
         time.sleep(2)
         folders_div = driver.find_element(By.CLASS_NAME, "folders")
-        carpetas = folders_div.find_elements(By.XPATH, ".//div | .//span")
-        orders_elem = None
-        for c in carpetas:
-            if "orders" in c.text.strip().lower():
-                orders_elem = c
-                break
 
-        if orders_elem is None:
-            raise Exception("No se encontró la carpeta ORDERS. Verifica el texto exacto en el panel de carpetas.")
+        # --- Solo ORDERS ---
+        orders_folder = None
+        for folder in folders_div.find_elements(By.CSS_SELECTOR, 'div[_ref="folder"]'):
+            try:
+                label = folder.find_element(By.CSS_SELECTOR, 'span.label')
+                if label.text.strip().upper() == "ORDERS":
+                    orders_folder = folder
+                    break
+            except Exception:
+                continue
 
-        driver.execute_script("arguments[0].scrollIntoView(true);", orders_elem)
-        orders_elem.click()
+        if not orders_folder:
+            raise Exception("No se encontró la carpeta ORDERS en el árbol de carpetas.")
+
+        # Click en ORDERS
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", orders_folder)
+        link = orders_folder.find_element(By.CSS_SELECTOR, 'a.link')
+        driver.execute_script("arguments[0].click();", link)
         print("✅ Carpeta 'ORDERS' abierta.")
 
-        # ESPERAR TABLA DE CORREOS
-        print("⏳ Esperando que cargue la tabla de correos...")
+        # Espera la tabla de correos
         WebDriverWait(driver, settings.WAIT_LONG).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.Widgets_Email_Grid_Row'))
         )
         time.sleep(2)
 
-        # Iterar sobre las filas de correos
+        # Extrae la lista de correos SOLO de ORDERS
+        all_emails = []
         rows = driver.find_elements(By.CSS_SELECTOR, 'tr.Widgets_Email_Grid_Row')
-        print(f"📨 Correos encontrados: {len(rows)}")
-        mails = []
+        print(f"🔍 Se encontraron {len(rows)} correos en ORDERS.")
         for i, row in enumerate(rows):
             try:
                 subj = row.find_element(By.CSS_SELECTOR, 'div[_ref="subject"]').text.strip()
                 recv = row.find_element(By.CSS_SELECTOR, 'div[_ref="received"]').text.strip()
                 if subj.lower() == "subject" and recv.lower() == "received":
                     continue
-                mails.append({"Subject": subj, "Received": recv})
-                print(f"{i+1}. Subject: {subj} | Received: {recv}")
+                all_emails.append({"Subject": subj, "Received": recv})
             except Exception as e:
                 print(f"❌ Error en fila {i}: {e}")
 
-        print(f"✅ Se extrajeron {len(mails)} mensajes.")
-        return mails
+        print(f"✅ Se extrajeron {len(all_emails)} mensajes en total.")
+        return all_emails
 
     finally:
         driver.quit()
