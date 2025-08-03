@@ -17,7 +17,7 @@ def scrap_rackspace_emails(settings: Settings):
         print("🚀 Iniciando scraper para Rackspace Webmail...")
         driver.get(settings.RACKSPACE_URL)
 
-        # LOGIN usando campos por NAME
+        # LOGIN
         print("🔐 Esperando campos de login…")
         WebDriverWait(driver, settings.WAIT_LONG).until(
             EC.presence_of_element_located((By.NAME, "username"))
